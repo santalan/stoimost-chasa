@@ -24,12 +24,19 @@ jobs:
           pip install -r requirements.txt
 
       - name: Validate source
-        run: python -m py_compile run.py
+        run: |
+          python -m py_compile run.py
+          python -m py_compile bootstrap.py
+
+      - name: GUI startup smoke test
+        shell: powershell
+        run: |
+          python -c "import bootstrap; app=bootstrap.App(); app.update_idletasks(); app.destroy(); print('GUI startup OK')"
 
       - name: Build EXE
         shell: powershell
         run: |
-          pyinstaller --noconfirm --clean --windowed --onefile --name "Stoimost-chasa" --collect-all matplotlib --collect-all openpyxl run.py
+          pyinstaller --noconfirm --clean --windowed --onefile --name "Stoimost-chasa" --collect-all matplotlib --collect-all openpyxl bootstrap.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4

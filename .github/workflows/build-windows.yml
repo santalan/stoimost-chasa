@@ -29,11 +29,11 @@ jobs:
       - name: Build EXE
         shell: powershell
         run: |
-          pyinstaller --noconfirm --clean --windowed --onefile --name "Стоимость часа" --collect-all matplotlib --collect-all openpyxl run.py
+          pyinstaller --noconfirm --clean --windowed --onefile --name "Stoimost-chasa" --collect-all matplotlib --collect-all openpyxl run.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
           name: Stoimost-chasa-Windows
-          path: dist/Стоимость часа.exe
+          path: dist/Stoimost-chasa.exe
           if-no-files-found: error

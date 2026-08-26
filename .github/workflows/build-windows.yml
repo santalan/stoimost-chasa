@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build Windows Portable
 
 on:
   workflow_dispatch:
@@ -33,14 +33,24 @@ jobs:
         run: |
           python -c "import bootstrap; app=bootstrap.App(); app.update_idletasks(); app.destroy(); print('GUI startup OK')"
 
-      - name: Build EXE
+      - name: Build portable folder
         shell: powershell
         run: |
-          pyinstaller --noconfirm --clean --windowed --onefile --name "Stoimost-chasa" --collect-all matplotlib --collect-all openpyxl bootstrap.py
+          pyinstaller --noconfirm --clean --windowed --onedir --name "Stoimost-chasa" --collect-all matplotlib --collect-all openpyxl bootstrap.py
 
-      - name: Upload EXE
+      - name: Verify packaged EXE
+        shell: powershell
+        run: |
+          if (-not (Test-Path "dist\Stoimost-chasa\Stoimost-chasa.exe")) { throw "EXE not found" }
+          $p = Start-Process -FilePath "dist\Stoimost-chasa\Stoimost-chasa.exe" -PassThru
+          Start-Sleep -Seconds 4
+          if ($p.HasExited) { throw "Packaged application exited during startup test" }
+          Stop-Process -Id $p.Id -Force
+          Write-Host "Packaged EXE startup OK"
+
+      - name: Upload portable application
         uses: actions/upload-artifact@v4
         with:
-          name: Stoimost-chasa-Windows
-          path: dist/Stoimost-chasa.exe
+          name: Stoimost-chasa-Windows-portable
+          path: dist/Stoimost-chasa/
           if-no-files-found: error

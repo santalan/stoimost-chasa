@@ -22,7 +22,9 @@ CATS={'stim':'Стимулирующие (ПДД, ВМП)','bonus':'Премии
 MODES={'as_is':'Как есть','spread':'Распределить','exclude':'Не учитывать'}
 DEFAULT={'stim':'spread','bonus':'exclude','vacation':'spread','expansion':'as_is','night':'as_is','holiday':'as_is','sick':'exclude','comp':'exclude','other':'as_is'}
 CPI21={1:100.67,2:100.78,3:100.66,4:100.58,5:100.74,6:100.69,7:100.31,8:100.17,9:100.60,10:101.11,11:100.96,12:100.82}
-YOY={2022:[8.73,9.15,16.69,17.83,17.10,15.90,15.10,14.30,13.68,12.63,11.98,11.94],2023:[11.77,10.99,3.51,2.31,2.51,3.25,4.30,5.15,6.00,6.69,7.48,7.42],2024:[7.44,7.69,7.72,7.84,8.30,8.59,9.13,9.05,8.63,8.54,8.88,9.52],2025:[9.92,10.06,10.34,10.23,9.88,9.40,8.79,8.14,7.98,7.71,6.64,5.59],2026:[6.00,5.91,5.86,5.58,5.31,6.02,5.98,6.33,6.35,6.95,7.08]}
+YOY={2022:[8.73,9.15,16.69,17.83,17.10,15.90,15.10,14.30,13.68,12.63,11.98,11.94],2023:[11.77,10.99,3.51,2.31,2.51,3.25,4.30,5.15,6.00,6.69,7.48,7.42],2024:[7.44,7.69,7.72,7.84,8.30,8.59,9.13,9.05,8.63,8.54,8.88,9.52],2025:[9.92,10.06,10.34,10.23,9.88,9.40,8.79,8.14,7.98,7.71,6.64,5.59],2026:[6.00,5.91,5.86,5.58,5.31,6.02,5.98,6.33,6.35,7.00,7.08]}
+# 2026-10 and 2026-11 are operational estimates, not final monthly Rosstat values as of 22.11.2026.
+PRELIM_INFL={(2026,10),(2026,11)}
 RATE={2021:[4.25,4.25,4.50,5,5,5.5,6.5,6.5,6.75,7.5,7.5,8.5],2022:[8.5,20,20,17,11,9.5,8,8,7.5,7.5,7.5,7.5],2023:[7.5,7.5,7.5,7.5,7.5,7.5,8.5,12,13,15,15,16],2024:[16,16,16,16,16,16,18,18,19,21,21,21],2025:[21,21,21,21,21,20,18,18,17,16.5,16.5,16],2026:[16,15.5,15,14.5,14.5,14.25,14,14,14,14,14]}
 
 def fnum(v):
@@ -112,7 +114,7 @@ def analyze(accr,modes):
     rows=[]
     for i,(y,m) in enumerate(months):
         norm=NORM.get(y,[0]*12)[m-1]; h=hrs[(y,m)]; std=(h/norm*STD) if norm and h>0 else 0
-        rows.append({'date':datetime(y,m,1),'y':y,'m':m,'norm':norm,'hours':h,'std':std,'salary':levels[i],'pid':pids[i],'cats':dict(by[(y,m)])})
+        rows.append({'date':datetime(y,m,1),'y':y,'m':m,'norm':norm,'hours':h,'std':std,'salary':levels[i],'pid':pids[i],'cats':dict(by[(y,m)]),'infl_prelim':(y,m) in PRELIM_INFL})
     allocated=[defaultdict(float) for _ in rows]
     for cat in ['base']+list(CATS):
         mode='as_is' if cat=='base' else modes.get(cat,DEFAULT.get(cat,'as_is'))
@@ -188,7 +190,13 @@ class App(tk.Tk):
             self.ax.stackplot([r['date'] for r in valid],*[[r['alloc'].get(c,0)/(r['std'] or 1) for r in valid] for c in cats],labels=labels,alpha=.8)
             self.ax.plot([r['date'] for r in valid],[r['rate'] for r in valid],label='Итого',linewidth=1.5)
         else:self.ax.plot(d,[r['rate'] for r in self.rows],marker='o',markersize=3,label='Стоимость часа')
-        if self.infl.get() and any(r.get('infl') for r in self.rows):self.ax.plot(d,[r.get('infl') for r in self.rows],label='Инфляционный ориентир')
+        if self.infl.get() and any(r.get('infl') for r in self.rows):
+            off=[r for r in self.rows if r.get('infl') is not None and not r.get('infl_prelim')]
+            pre=[r for r in self.rows if r.get('infl') is not None and (r.get('infl_prelim') or (off and r['date']==off[-1]['date']))]
+            if off:self.ax.plot([r['date'] for r in off],[r.get('infl') for r in off],label='Инфляционный ориентир')
+            if pre:
+                bridge=([off[-1]] if off else [])+[r for r in self.rows if r.get('infl_prelim') and r.get('infl') is not None]
+                self.ax.plot([r['date'] for r in bridge],[r.get('infl') for r in bridge],linestyle='--',marker='o',markersize=3,label='Инфляция — оперативная оценка')
         if self.cbr.get() and any(r.get('cbr') for r in self.rows):self.ax.plot(d,[r.get('cbr') for r in self.rows],label='Ориентир по ставке ЦБ')
         self.ax.set_ylim(bottom=0); self.ax.set_ylabel('₽/ч'); self.ax.grid(True,alpha=.25); self.ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3)); self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m')); self.fig.autofmt_xdate(); self.ax.legend(loc='upper left'); self.fig.tight_layout(); self.canvas.draw()
     def png(self):

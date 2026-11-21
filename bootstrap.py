@@ -18,7 +18,7 @@ def _boolean_var_compat(master=None, value=None, name=None):
 tk.BooleanVar = _boolean_var_compat
 
 import run
-run.VERSION = '0.2.3'
+run.VERSION = '0.2.4'
 
 NS = {"a": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 CELL_TEXT = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}t"
